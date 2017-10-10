@@ -1,6 +1,6 @@
 /* Networks Program 3
  * Lauren Ferrara - lferrara
- * Charlie Newell -
+ * Charlie Newell - cnewell1
  *
  * Client side of FTP
  */
