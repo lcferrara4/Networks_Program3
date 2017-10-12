@@ -40,6 +40,7 @@ int receiveInt(int bits, int socket) {
                 }
                 size = ntohs(ret);
         }
+	printf("%i\n", size);
         return size;
 }
 
@@ -79,6 +80,15 @@ void sendFileDir(int socket, char *filename) {
 	}
 }
 
+int getFileSize(char* filename){
+	int file_size;
+	FILE *fp = fopen(filename, "r");
+	fseek(fp, 0L, SEEK_END);
+	file_size = ftell(fp);
+	fseek(fp, 0L, SEEK_SET);
+	return file_size;
+}
+
 int main (int argc, char *argv[]) {
 
 	// Variable declaration
@@ -86,7 +96,7 @@ int main (int argc, char *argv[]) {
 	char *server_name;
 	struct hostent *server;
 	struct sockaddr_in server_addr;
-	char buffer[BUFSIZE]; //, inner_buffer[BUFSIZE];
+	char buffer[BUFSIZE], inner_buffer[BUFSIZE];
 	int opt = 1; /* 0 to disable options */
 	char filename[BUFSIZE];
 	char operation[10];
@@ -160,37 +170,69 @@ int main (int argc, char *argv[]) {
 		} else {
 			bzero((char*)&filename, sizeof(filename));
 			sendFileDir(s, filename);
-
+			
 			// Begin other operations
 			if (!strcmp(operation, "DWLD")) {
 				// Download file
 				int file_size = receiveInt(32, s);
-				
 				int total_recv = 0;
 				int i = 0;
+				int x;
 				printf("%i\n",file_size);
+
 				if(file_size == -1) {
 					printf("The desired file does not exist\n");
 					continue;
+				
 				} else {
-					char inner_buffer[file_size];
 					FILE *fp = fopen(filename, "a");
-					while (total_recv < file_size) {
-						if ((i = read(s, inner_buffer, file_size)) < 0) {
-							perror("FTP Client: Error dwld file\n");
-							exit(1);
-						}
-						total_recv += i;
-						if(total_recv > file_size) {
-							inner_buffer[file_size-(total_recv-i)] = '\0';
-							fwrite(inner_buffer, sizeof(char), file_size-(total_recv-i),fp);
+					int recv_len = 0;
+					int total = 0;
+					
+					while((recv_len = recv(s, inner_buffer, BUFSIZE, 0)) > 0) {
+						total += recv_len;
+						
+						if(total > file_size) {
+							inner_buffer[file_size - (total - recv_len)] = '\0';
+							x = fwrite(inner_buffer, sizeof(char), file_size - (total - recv_len), fp);
 							break;
 						}
-						fwrite(inner_buffer, sizeof(char), i, fp);
+						x = fwrite(inner_buffer, sizeof(char), recv_len, fp);
+						bzero(inner_buffer, BUFSIZE);
+						if (total > file_size) break;
 					}
+					fclose(fp);
+					
 				}
 			} else if (!strcmp(operation, "UPLD")) {
 				// Upload file
+				bzero((char*)&inner_buffer, sizeof(inner_buffer));
+				int x;
+				if((x = recv(s, inner_buffer, sizeof(buffer), 0)) == -1 ) {
+					perror("FTP Server: Unable to receive ack in upld\n");
+					exit(1);
+				}
+
+				if(!strcmp(inner_buffer, "ACK")) {
+					x = getFileSize(filename);
+					sendInt(x, 32, s);
+					
+					FILE *fp = fopen(filename, "r");
+					int send = 0;
+					int total = 0;
+					
+					while(send = fread(inner_buffer, sizeof(char), BUFSIZE, fp)) {
+						total += send;
+						if(write(s, inner_buffer, sizeof(inner_buffer)) < 0) {
+							perror("FTP Server: Error sending contents of upld\n");
+							exit(1);
+						}
+						bzero(inner_buffer, BUFSIZE);
+						if(total >= x) break;
+					}
+					fclose(fp);
+					bzero(inner_buffer, BUFSIZE);
+				}
 			} else if (!strcmp(operation, "DELF")) {
 				// Delete file
 				int confirm = receiveInt(32, s);
