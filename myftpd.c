@@ -36,6 +36,15 @@ int listDirectory(char* buffer){
 	return new_len;
 }
 
+int getFileSize(char* filename){
+	int file_size;
+	FILE *fp = fopen(filename, "r");
+	fseek(fp, 0L, SEEK_END);
+	file_size = ftell(fp);
+	fseek(fp, 0L, SEEK_SET);
+	return file_size;
+}
+
 int main (int argc, char *argv[]) {
 
 	//variable declaration
@@ -145,10 +154,48 @@ int main (int argc, char *argv[]) {
                                         exit(1);
                                 }
 				filename[name_size] = '\0';
-
+				printf("%s\n");
 				// Begin other operations
 				if (!strcmp(buffer, "DWLD")) {
 					//Download file commands
+					bzero(buffer, BUFSIZE);
+					if (access( filename, F_OK ) != -1) {
+						printf("%i\n", access(filename, F_OK));
+						int x = getFileSize(filename);
+						int32_t dwld_file_size = htonl(x);
+						char *data = (char*)&dwld_file_size;
+						int dwld_file_size_int = sizeof(dwld_file_size);
+						// Write the size of the file as 32-bit int
+						if (write(s_new, data, dwld_file_size_int) < 0) {
+							perror("FTP Server: Error sending size of dwld file\n");
+							exit(1);
+						}
+
+						// Write contents of file to client
+						FILE *fp = fopen(filename, "r");
+						int sent = -1;
+						while(sent != 0) { 
+							sent = fread(buffer, sizeof(char), BUFSIZE, fp);
+							if(ferror(fp) != 0) {
+								fputs("error reading file", stderr);
+							}
+							if (write(s_new, buffer, sizeof(buffer)) < 0) {
+								perror("FTP Server: Error sending contents of dwld\n");
+							}
+							bzero(buffer, BUFSIZE);
+						}	  
+
+					} else if (access( filename, F_OK ) == -1) {
+						int32_t dwld_file_size = htonl(-1);
+						char *data = (char*)&dwld_file_size;
+						int dwld_file_size_int = sizeof(dwld_file_size_int);
+						//Return 32-bit -1 to signify file not here
+						if (write(s_new, data, dwld_file_size_int) < 0) {
+							perror("FTP Server: Error sending file does not exist in dwld\n");
+							exit(1);
+						}		
+					}		
+					
 				} else if (!strcmp(buffer, "UPLD")) {
 					//Upload file commands
 				} else if (!strcmp(buffer, "DELF")) {

@@ -126,6 +126,38 @@ int main (int argc, char *argv[]) {
 			// Begin other operations
 			if (!strcmp(buffer, "DWLD")) {
 				// Download file
+				bzero(buffer, BUFSIZE);
+				int32_t dwld_file_size;
+				char *data = (char*)&dwld_file_size;
+				int dwld_file_size_int = sizeof(dwld_file_size);
+				if (read(s, data, dwld_file_size_int) < 0) {
+					perror("FTP Client: Error reading dwld file size\n");
+					exit(1);
+				}
+
+				int file_size = ntohl(dwld_file_size);
+				int total_recv = 0;
+				int i = 0;
+				printf("%i\n",file_size);
+				if(file_size == -1) {
+					printf("The desired file does not exist\n");
+					continue;
+				} else {
+					FILE *fp = fopen(filename, "a");
+					while (total_recv < file_size) {
+						if ((i = read(s, buffer, BUFSIZE)) < 0) {
+							perror("FTP Client: Error dwld file\n");
+							exit(1);
+						}
+						total_recv += i;
+						if(total_recv > file_size) {
+							buffer[file_size-(total_recv-i)] = '\0';
+							fwrite(buffer, sizeof(char), file_size-(total_recv-i),fp);
+							break;
+						}
+						fwrite(buffer, sizeof(char), i, fp);
+					}
+				}
 			} else if (!strcmp(buffer, "UPLD")) {
 				// Upload file
 			} else if (!strcmp(buffer, "DELF")) {
