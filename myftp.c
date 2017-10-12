@@ -109,7 +109,7 @@ int main (int argc, char *argv[]) {
 			scanf("%s", filename);		
 			size = strlen(filename);	
 
-                        int32_t conv = htonl(size);
+                        int16_t conv = htons(size);
                         char *data = (char*)&conv;
                         int size_int = sizeof(conv);
 			// Send length of filename
@@ -123,6 +123,7 @@ int main (int argc, char *argv[]) {
                         	exit(1);
                 	}
 
+			// Begin other operations
 			if (!strcmp(buffer, "DWLD")) {
 				// Download file
 			} else if (!strcmp(buffer, "UPLD")) {

@@ -128,14 +128,14 @@ int main (int argc, char *argv[]) {
 				}
 			} else {
 				// Get filename/directory name length from client
-                                int32_t ret;
+                                int16_t ret;
                                 char *data = (char*)&ret;
                                 int int_size = sizeof(ret);
                                 if (recv(s_new, data, int_size, 0) < 0) {
 					perror("FTP Server: Error receiving file/directory size\n");
 					exit(1);
 				}
-                                int name_size = ntohl(ret);
+                                int name_size = ntohs(ret);
 				printf("filename size: %d\n", name_size);
 				char filename[name_size + 1];
 				bzero(filename, name_size + 1);
@@ -145,6 +145,8 @@ int main (int argc, char *argv[]) {
                                         exit(1);
                                 }
 				filename[name_size] = '\0';
+
+				// Begin other operations
 				if (!strcmp(buffer, "DWLD")) {
 					//Download file commands
 				} else if (!strcmp(buffer, "UPLD")) {
