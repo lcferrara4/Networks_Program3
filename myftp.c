@@ -108,8 +108,12 @@ int main (int argc, char *argv[]) {
 			printf("Enter file or directory name: ");
 			scanf("%s", filename);		
 			size = strlen(filename);	
+
+                        int32_t conv = htonl(size);
+                        char *data = (char*)&conv;
+                        int size_int = sizeof(conv);
 			// Send length of filename
-			if (write(s, filename, size) < 0) {
+			if (write(s, data, size_int) < 0) {
                                 perror("FTP Client: Error writing to socket\n");
                                 exit(1);
                         }

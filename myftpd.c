@@ -43,7 +43,7 @@ int main (int argc, char *argv[]) {
 	int waiting = 1;
 	struct sockaddr_in sin;	
 	int opt = 1; /* 0 to disable options */
-	char buffer[BUFSIZE], filename[BUFSIZE], operation[BUFSIZE];;
+	char buffer[BUFSIZE], operation[BUFSIZE];;
 
 
 	//check command line arguments
@@ -94,6 +94,8 @@ int main (int argc, char *argv[]) {
 		}
 
 		while(1) {
+	
+			bzero((char*)&buffer, sizeof(buffer));
 			
 			//receive message from client
 			if ((len = recv(s_new, buffer, sizeof(buffer), 0)) == -1 ) {
@@ -118,6 +120,7 @@ int main (int argc, char *argv[]) {
 					perror("FTP Server: Error sending size of directory listing\n");
 					exit(1);
 				}
+				
 				// Write listing
 				if (write(s_new, buffer, BUFSIZE) < 0) {
 					perror("FTP Server: Error listing directory contents\n");
@@ -125,15 +128,23 @@ int main (int argc, char *argv[]) {
 				}
 			} else {
 				// Get filename/directory name length from client
-				if ((filelen = recv(s_new, filename, sizeof(filename), 0)) == -1 ) {
+                                int32_t ret;
+                                char *data = (char*)&ret;
+                                int int_size = sizeof(ret);
+                                if (recv(s_new, data, int_size, 0) < 0) {
+					perror("FTP Server: Error receiving file/directory size\n");
+					exit(1);
+				}
+                                int name_size = ntohl(ret);
+				printf("filename size: %d\n", name_size);
+				char filename[name_size + 1];
+				bzero(filename, name_size + 1);
+				// Get filename/directory name from client
+				if (recv(s_new, filename, name_size, 0) == -1 ) {
                                         perror("FTP Server: Unable to receive filename\n");
                                         exit(1);
                                 }
-				// Get filename/directory name from client
-				if ((filelen = recv(s_new, filename, sizeof(filename), 0)) == -1 ) {
-					perror("FTP Server: Unable to receive filename\n");
-					exit(1);
-				}
+				filename[name_size] = '\0';
 				if (!strcmp(buffer, "DWLD")) {
 					//Download file commands
 				} else if (!strcmp(buffer, "UPLD")) {
@@ -148,10 +159,6 @@ int main (int argc, char *argv[]) {
 			}
 				
 
-			//printf("Buffer: %s\n", buffer);
-			//printf("Filename: %s\n", filename);
-			bzero((char*)&buffer, sizeof(buffer));
-			bzero((char*)&filename, sizeof(filename));
 		}
 		close(s_new);
 
