@@ -82,12 +82,16 @@ int main (int argc, char *argv[]) {
 		// Send message to server
 		if (!strcmp(buffer, "QUIT")) {
 			// Exit client connection
-			printf("FTP Client: Connection has been closed.");
+			printf("FTP Client: Connection has been closed.\n");
 			running = 0;
 			break;
 		} else if (!strcmp(buffer, "LIST")) {
 			// List directory at the server
-	
+			if (read(s, buffer, sizeof(buffer)) < 0) {
+				perror("FTP Client: Error reading from socket\n");
+				exit(1);
+			}
+			printf("%s", buffer);
 		} else {
 			// Get file or directory name for operation
 			printf("Enter file or directory name: ");

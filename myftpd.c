@@ -20,6 +20,22 @@
 #define BUFSIZE 4096
 #define MAX_PENDING 5
 
+void listDirectory(char* buffer){
+	char command[20] = "ls -l > output.txt";
+	system(command);
+
+	FILE *fp = fopen("output.txt", "r");
+	if(fp != NULL){
+        size_t new_len = fread(buffer, sizeof(char), BUFSIZE, fp);
+        if(ferror(fp) != 0){
+            fputs("error reading file" , stderr);
+        } else{
+            buffer[new_len++] = '\0';
+        }
+        fclose(fp);
+    }
+}
+
 int main (int argc, char *argv[]) {
 
 	//variable declaration
@@ -27,7 +43,7 @@ int main (int argc, char *argv[]) {
 	int waiting = 1;
 	struct sockaddr_in sin;	
 	int opt = 1; /* 0 to disable options */
-	char buffer[BUFSIZE], filename[BUFSIZE];
+	char buffer[BUFSIZE], filename[BUFSIZE], operation[BUFSIZE];;
 
 
 	//check command line arguments
@@ -51,7 +67,7 @@ int main (int argc, char *argv[]) {
 
 	//set socket option to allow reuse of port
 	if ((setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int))) < 0 ) {
-		perror("simplex-talk:sockt");
+		perror("FTP Server: Unable to set socket options\n");
 		exit(1);
 	}
 
@@ -92,6 +108,12 @@ int main (int argc, char *argv[]) {
 				break;
 			} else if (!strcmp(buffer, "LIST")) {
 				//Do list commands
+				bzero(buffer, BUFSIZE);	
+				listDirectory(buffer);
+				if (write(s_new, buffer, BUFSIZE) < 0) {
+					perror("FTP Server: Error listing directory contents\n");
+					exit(1);
+				}
 			} else {
 				if ((filelen = recv(s_new, filename, sizeof(filename), 0)) == -1 ) {
 					perror("FTP Server: Unable to receive filename\n");
@@ -121,3 +143,4 @@ int main (int argc, char *argv[]) {
 	}
 	exit(0);
 }
+
