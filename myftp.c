@@ -72,6 +72,9 @@ int main (int argc, char *argv[]) {
 
 	// Prompt user for operation
 	while (running) {
+
+		bzero((char*)&buffer, sizeof(buffer));
+
 		printf("Enter FTP operation: ");
 		scanf("%s", buffer);
 		size = strlen(buffer);	
@@ -130,6 +133,43 @@ int main (int argc, char *argv[]) {
 				// Upload file
 			} else if (!strcmp(buffer, "DELF")) {
 				// Delete file
+				int32_t ret;
+				char *data = (char*)&ret;
+				int int_size = sizeof(ret);
+				if (read(s, data, int_size) < 0) {
+					perror("FTP Client: Error reading from socket\n");
+					exit(1);
+				}
+				int confirm = ntohl(ret);
+				if (confirm < 0) {
+					printf("The file does not exist on server\n");
+				} else {
+					bzero((char*)&buffer, sizeof(buffer));
+					printf("Are you sure you want to delete? Yes or No: ");
+					scanf("%s", buffer);
+					size = strlen(buffer);
+					if (write(s, buffer, size) < 0) {
+						perror("FTP Client: Error writing to socket\n");
+						exit(1);
+					}
+					if (!strcmp(buffer, "Yes")){
+						int32_t ack;
+                                		data = (char*)&ack;
+                                		if (read(s, data, int_size) < 0) {
+                                        		perror("FTP Client: Error reading from socket\n");
+                                        		exit(1);
+                                		}
+                                		confirm = ntohl(ack);
+						if (confirm < 0) {
+							perror("FTP Client: Error deleting the file\n");
+							exit(1);
+						} else {
+							printf("File deleted successfully\n");
+						}	
+					} else {
+ 						printf("Delete abandoned by the user!\n");
+					}
+				}
 			} else if (!strcmp(buffer, "MDIR")) {
 				// Make directory
 			} else if (!strcmp(buffer, "RDIR")) {
