@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 #define BUFSIZE 4096
 
@@ -87,20 +88,37 @@ int main (int argc, char *argv[]) {
 			break;
 		} else if (!strcmp(buffer, "LIST")) {
 			// List directory at the server
-			if (read(s, buffer, sizeof(buffer)) < 0) {
+			// Get directory listing size
+			int32_t ret;
+    			char *data = (char*)&ret;
+    			int int_size = sizeof(ret);
+			if (read(s, data, int_size) < 0) {
 				perror("FTP Client: Error reading from socket\n");
 				exit(1);
 			}
-			printf("%s", buffer);
+			int listing_size = ntohl(ret);
+			char listing[listing_size];
+			if (read(s, listing, listing_size) < 0) {
+				perror("FTP Client: Error reading from socket\n");
+				exit(1);
+			}
+			printf("%s", listing);
 		} else {
 			// Get file or directory name for operation
 			printf("Enter file or directory name: ");
 			scanf("%s", filename);		
 			size = strlen(filename);	
+			// Send length of filename
+			if (write(s, filename, size) < 0) {
+                                perror("FTP Client: Error writing to socket\n");
+                                exit(1);
+                        }
+			// Send filename
                 	if (write(s, filename, size) < 0) {
                         	perror("FTP Client: Error writing to socket\n");
                         	exit(1);
                 	}
+
 			if (!strcmp(buffer, "DWLD")) {
 				// Download file
 			} else if (!strcmp(buffer, "UPLD")) {

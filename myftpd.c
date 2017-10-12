@@ -16,24 +16,24 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 #define BUFSIZE 4096
 #define MAX_PENDING 5
 
-void listDirectory(char* buffer){
-	char command[20] = "ls -l > output.txt";
-	system(command);
-
-	FILE *fp = fopen("output.txt", "r");
+int listDirectory(char* buffer){
+	int new_len;
+	FILE *fp = popen("ls -l", "r");
 	if(fp != NULL){
-        size_t new_len = fread(buffer, sizeof(char), BUFSIZE, fp);
-        if(ferror(fp) != 0){
-            fputs("error reading file" , stderr);
-        } else{
-            buffer[new_len++] = '\0';
-        }
-        fclose(fp);
-    }
+        	new_len = fread(buffer, sizeof(char), BUFSIZE, fp);
+		if(ferror(fp) != 0){
+            		fputs("error reading file" , stderr);
+        	} else {
+           		buffer[new_len++] = '\0';
+        	}
+        	pclose(fp);
+    	}
+	return new_len;
 }
 
 int main (int argc, char *argv[]) {
@@ -109,12 +109,27 @@ int main (int argc, char *argv[]) {
 			} else if (!strcmp(buffer, "LIST")) {
 				//Do list commands
 				bzero(buffer, BUFSIZE);	
-				listDirectory(buffer);
+				int x = listDirectory(buffer);
+	    			int32_t conv = htonl(x);
+    				char *data = (char*)&conv;
+    				int size_int = sizeof(conv);
+				// Write size of listing as 32-bit int		
+				if (write(s_new, data, size_int) < 0) {
+					perror("FTP Server: Error sending size of directory listing\n");
+					exit(1);
+				}
+				// Write listing
 				if (write(s_new, buffer, BUFSIZE) < 0) {
 					perror("FTP Server: Error listing directory contents\n");
 					exit(1);
 				}
 			} else {
+				// Get filename/directory name length from client
+				if ((filelen = recv(s_new, filename, sizeof(filename), 0)) == -1 ) {
+                                        perror("FTP Server: Unable to receive filename\n");
+                                        exit(1);
+                                }
+				// Get filename/directory name from client
 				if ((filelen = recv(s_new, filename, sizeof(filename), 0)) == -1 ) {
 					perror("FTP Server: Unable to receive filename\n");
 					exit(1);
