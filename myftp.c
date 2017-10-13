@@ -193,7 +193,7 @@ int main (int argc, char *argv[]) {
 					
 					while((recv_len = recv(s, inner_buffer, BUFSIZE, 0)) > 0) {
 						total += recv_len;
-						
+						printf("%i\n", total);
 						if(total > file_size) {
 							inner_buffer[file_size - (total - recv_len)] = '\0';
 							x = fwrite(inner_buffer, sizeof(char), file_size - (total - recv_len), fp);
@@ -201,7 +201,7 @@ int main (int argc, char *argv[]) {
 						}
 						x = fwrite(inner_buffer, sizeof(char), recv_len, fp);
 						bzero(inner_buffer, BUFSIZE);
-						if (total > file_size) break;
+						if (total >= file_size) break;
 					}
 					fclose(fp);
 					

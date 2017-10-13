@@ -244,7 +244,7 @@ int main (int argc, char *argv[]) {
 					}
 					fwrite(inner_buffer, sizeof(char), recv, fp);
 					bzero(inner_buffer, sizeof(inner_buffer));
-					if(total >= recv) break; 
+					if(total >= filesize) break; 
 				}
 				fclose(fp);	
 				 
