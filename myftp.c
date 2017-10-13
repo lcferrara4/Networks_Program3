@@ -86,7 +86,7 @@ int main (int argc, char *argv[]) {
 	char *server_name;
 	struct hostent *server;
 	struct sockaddr_in server_addr;
-	char buffer[BUFSIZE]; //, inner_buffer[BUFSIZE];
+	char buffer[BUFSIZE]; inner_buffer[BUFSIZE];
 	int opt = 1; /* 0 to disable options */
 	char filename[BUFSIZE];
 	char operation[10];
@@ -151,119 +151,132 @@ int main (int argc, char *argv[]) {
 			// Get directory listing size
 			int listing_size = receiveInt(32, s);
 			char listing[listing_size];
-			//bzero((char*)&listing, sizeof(listing));
 			if (read(s, listing, listing_size) < 0) {
 				perror("FTP Client: Error reading from socket\n");
 				exit(1);
 			}
 			printf("%s", listing);
-		} else {
+		} else if (!strcmp(operation, "DWLD")) {
+			// Download file
 			bzero((char*)&filename, sizeof(filename));
 			sendFileDir(s, filename);
 
-			// Begin other operations
-			if (!strcmp(operation, "DWLD")) {
-				// Download file
-				int file_size = receiveInt(32, s);
-				
-				int total_recv = 0;
-				int i = 0;
-				printf("%i\n",file_size);
-				if(file_size == -1) {
-					printf("The desired file does not exist\n");
-					continue;
-				} else {
-					char inner_buffer[file_size];
-					FILE *fp = fopen(filename, "a");
-					while (total_recv < file_size) {
-						if ((i = read(s, inner_buffer, file_size)) < 0) {
-							perror("FTP Client: Error dwld file\n");
-							exit(1);
-						}
-						total_recv += i;
-						if(total_recv > file_size) {
-							inner_buffer[file_size-(total_recv-i)] = '\0';
-							fwrite(inner_buffer, sizeof(char), file_size-(total_recv-i),fp);
-							break;
-						}
-						fwrite(inner_buffer, sizeof(char), i, fp);
-					}
-				}
-			} else if (!strcmp(operation, "UPLD")) {
-				// Upload file
-			} else if (!strcmp(operation, "DELF")) {
-				// Delete file
-				int confirm = receiveInt(32, s);
-				if (confirm < 0) {
-					printf("The file does not exist on server\n");
-				} else {
-					char inner_buffer[BUFSIZE];
-					printf("Are you sure you want to delete? Yes or No: ");
-					scanf("%s", inner_buffer);
-					size = strlen(inner_buffer);
-					if (write(s, inner_buffer, size) < 0) {
-						perror("FTP Client: Error writing to socket\n");
+			int file_size = receiveInt(32, s);
+			
+			int total_recv = 0;
+			int i = 0;
+			printf("%i\n",file_size);
+			if(file_size == -1) {
+				printf("The desired file does not exist\n");
+				continue;
+			} else {
+				//char inner_buffer[file_size];
+				FILE *fp = fopen(filename, "a");
+				bzero((char*)&inner_buffer, sizeof(inner_buffer));
+				while (total_recv < file_size) {
+					if ((i = read(s, inner_buffer, file_size)) < 0) {
+						perror("FTP Client: Error dwld file\n");
 						exit(1);
 					}
-					if (!strcmp(inner_buffer, "Yes")){
-                                		confirm = receiveInt(32, s);
-						if (confirm < 0) {
-							perror("FTP Client: Error deleting the file\n");
-							exit(1);
-						} else {
-							printf("File deleted successfully\n");
-						}	
-					} else {
- 						printf("Delete abandoned by the user!\n");
+					total_recv += i;
+					if(total_recv > file_size) {
+						inner_buffer[file_size] = '\0';
+						fwrite(inner_buffer, sizeof(char), file_size-(total_recv-i),fp);
+						break;
 					}
+					fwrite(inner_buffer, sizeof(char), i, fp);
 				}
-			} else if (!strcmp(operation, "MDIR")) {
-				// Make directory
-				int confirm = receiveInt(32, s);
-				if (confirm == -2) {
-					printf("The directory already exists on server\n");
-				} else if (confirm == -1) {
-					printf("Error in making directory\n");
-				} else {
-					printf("The directory was successfully made\n");
-				}
-			} else if (!strcmp(operation, "RDIR")) {
-				// Remove directory
-				int confirm = receiveInt(32, s);
-				if (confirm == -1) {
-					printf("The directory doesn't exist on server\n");
-				} else {
-                                        char inner_buffer[BUFSIZE];
-                                        printf("Are you sure you want to delete? Yes or No: ");
-                                        scanf("%s", inner_buffer);
-                                        size = strlen(inner_buffer);
-                                        if (write(s, inner_buffer, size) < 0) {
-                                                perror("FTP Client: Error writing to socket\n");
-                                                exit(1);
-                                        }
-                                        if (!strcmp(inner_buffer, "Yes")){
-                                                confirm = receiveInt(32, s);
-                                                if (confirm < 0) {
-                                                        perror("FTP Client: Error deleting the directory\n");
-                                                        exit(1);
-                                                } else {
-                                                        printf("Directory deleted successfully\n");
-                                                }
-                                        } else {
-                                                printf("Delete abandoned by the user!\n");
-                                        }
-				}
-			} else if (!strcmp(operation, "CDIR")) {
-				// Change to a different directory
-				int confirm = receiveInt(32, s);
-				if (confirm == -2) {
-					printf("The directory doesn't exist on server\n");
-				} else if (confirm == -1) {
-					printf("Error in changing directory\n");
-				} else {
-					printf("Changed current directory\n");
+				fclose(fp);
+			}
+		} else if (!strcmp(operation, "UPLD")) {
+			// Upload file
+			bzero((char*)&filename, sizeof(filename));
+			sendFileDir(s, filename);
 
+		} else if (!strcmp(operation, "DELF")) {
+			// Delete file
+			bzero((char*)&filename, sizeof(filename));
+			sendFileDir(s, filename);
+
+			int confirm = receiveInt(32, s);
+			if (confirm < 0) {
+				printf("The file does not exist on server\n");
+			} else {
+				char inner_buffer[BUFSIZE];
+				printf("Are you sure you want to delete? Yes or No: ");
+				scanf("%s", inner_buffer);
+				size = strlen(inner_buffer);
+				if (write(s, inner_buffer, size) < 0) {
+					perror("FTP Client: Error writing to socket\n");
+					exit(1);
 				}
+				if (!strcmp(inner_buffer, "Yes")){
+					confirm = receiveInt(32, s);
+					if (confirm < 0) {
+						perror("FTP Client: Error deleting the file\n");
+						exit(1);
+					} else {
+						printf("File deleted successfully\n");
+					}	
+				} else {
+					printf("Delete abandoned by the user!\n");
+				}
+			}
+		} else if (!strcmp(operation, "MDIR")) {
+			// Make directory
+			bzero((char*)&filename, sizeof(filename));
+			sendFileDir(s, filename);
+
+			int confirm = receiveInt(32, s);
+			if (confirm == -2) {
+				printf("The directory already exists on server\n");
+			} else if (confirm == -1) {
+				printf("Error in making directory\n");
+			} else {
+				printf("The directory was successfully made\n");
+			}
+		} else if (!strcmp(operation, "RDIR")) {
+			// Remove directory
+			bzero((char*)&filename, sizeof(filename));
+			sendFileDir(s, filename);
+
+			int confirm = receiveInt(32, s);
+			if (confirm == -1) {
+				printf("The directory doesn't exist on server\n");
+			} else {
+				char inner_buffer[BUFSIZE];
+				printf("Are you sure you want to delete? Yes or No: ");
+				scanf("%s", inner_buffer);
+				size = strlen(inner_buffer);
+				if (write(s, inner_buffer, size) < 0) {
+					perror("FTP Client: Error writing to socket\n");
+					exit(1);
+				}
+				if (!strcmp(inner_buffer, "Yes")){
+					confirm = receiveInt(32, s);
+					if (confirm < 0) {
+						perror("FTP Client: Error deleting the directory\n");
+						exit(1);
+					} else {
+						printf("Directory deleted successfully\n");
+					}
+				} else {
+					printf("Delete abandoned by the user!\n");
+				}
+			}
+		} else if (!strcmp(operation, "CDIR")) {
+			// Change to a different directory
+			bzero((char*)&filename, sizeof(filename));
+			sendFileDir(s, filename);
+
+			int confirm = receiveInt(32, s);
+			if (confirm == -2) {
+				printf("The directory doesn't exist on server\n");
+			} else if (confirm == -1) {
+				printf("Error in changing directory\n");
+			} else {
+				printf("Changed current directory\n");
+
 			}
 		}
 	}
