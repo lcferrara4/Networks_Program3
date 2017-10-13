@@ -96,7 +96,7 @@ int main (int argc, char *argv[]) {
 	char *server_name;
 	struct hostent *server;
 	struct sockaddr_in server_addr;
-	char buffer[BUFSIZE], inner_buffer[BUFSIZE];
+	char buffer[BUFSIZE];//, inner_buffer[BUFSIZE];
 	int opt = 1; /* 0 to disable options */
 	char filename[BUFSIZE];
 	char operation[10];
@@ -178,6 +178,8 @@ int main (int argc, char *argv[]) {
 				int total_recv = 0;
 				int i = 0;
 				int x;
+				char inner_buffer[BUFSIZE];
+
 				printf("%i\n",file_size);
 
 				if(file_size == -1) {
@@ -203,36 +205,30 @@ int main (int argc, char *argv[]) {
 					}
 					fclose(fp);
 					
+					
 				}
 			} else if (!strcmp(operation, "UPLD")) {
 				// Upload file
-				bzero((char*)&inner_buffer, sizeof(inner_buffer));
-				int x;
-				if((x = recv(s, inner_buffer, sizeof(buffer), 0)) == -1 ) {
-					perror("FTP Server: Unable to receive ack in upld\n");
-					exit(1);
-				}
+				char inner_buffer[BUFSIZE];
+				int x = getFileSize(filename);
+				sendInt(x, 32, s);
+				FILE *fp = fopen(filename, "r");		
+				
 
-				if(!strcmp(inner_buffer, "ACK")) {
-					x = getFileSize(filename);
-					sendInt(x, 32, s);
-					
-					FILE *fp = fopen(filename, "r");
-					int send = 0;
-					int total = 0;
-					
-					while(send = fread(inner_buffer, sizeof(char), BUFSIZE, fp)) {
-						total += send;
-						if(write(s, inner_buffer, sizeof(inner_buffer)) < 0) {
-							perror("FTP Server: Error sending contents of upld\n");
-							exit(1);
-						}
-						bzero(inner_buffer, BUFSIZE);
-						if(total >= x) break;
+				int sent = 0;
+				int total = 0;
+				while(sent = fread(inner_buffer, sizeof(char), BUFSIZE, fp)) {
+					total += sent;
+					if(write(s, inner_buffer, sent) < 0) {
+						perror("FTP Server: Error sending file\n");
+						exit(1);
 					}
-					fclose(fp);
 					bzero(inner_buffer, BUFSIZE);
+					if(total >= x) break;
 				}
+				fclose(fp);
+
+
 			} else if (!strcmp(operation, "DELF")) {
 				// Delete file
 				int confirm = receiveInt(32, s);

@@ -203,7 +203,7 @@ int main (int argc, char *argv[]) {
 					
 					while(send = fread(inner_buffer, sizeof(char), BUFSIZE, fp)) {
 						total += send;
-						if(write(s_new, inner_buffer, sizeof(inner_buffer)) < 0) {
+						if(write(s_new, inner_buffer, send) < 0) {
 							perror("FTP Server: Error sending contents of dwld\n");
 							exit(1);
 						}
@@ -215,42 +215,36 @@ int main (int argc, char *argv[]) {
 					bzero(inner_buffer, BUFSIZE);
 
 
-
 				} else if (access( filename, F_OK ) == -1) {
 					//Return 32-bit -1 to signify file not here
 					sendInt(-1, 32, s_new);
 				}		
+			
 			} else if (!strcmp(buffer, "UPLD")) {
 				// Upload file commands
 				// Get filename/directory name length from client
 				bzero((char*)&filename, sizeof(filename));
 				bzero((char*)&inner_buffer, sizeof(inner_buffer));
 				getFileDir(s_new, filename);
+				printf("%s\n", filename);
+				int filesize = receiveInt(32, s_new); 
+				printf("%i\n", filesize);	
 				
-				int file_size;
 
-				sprintf(inner_buffer, "ACK");
-				if (write(s_new, inner_buffer, sizeof(inner_buffer)) < 0 ) {
-					perror("FTP Server: Error sending acknowledgement for upld\n");
-					exit(1);
-				}
-
-				file_size = receiveInt(32, s_new);
-				int recv_len = 0;
-				int total = 0;
 				FILE *fp = fopen(filename, "a");
-
-				while((recv_len = recv(s, inner_buffer, BUFSIZE, 0)) > 0) {
-					total += recv_len;
-					
-					if(total > file_size) {
-						inner_buffer[file_size - (total - recv_len)] = '\0';
-						fwrite(inner_buffer, sizeof(char), file_size - (total - recv_len), fp);
+				int recv = 0;
+				int total = 0;
+				
+				while((recv = read(s_new, inner_buffer, BUFSIZE)) > 0) {
+					total += recv;
+					if (total > filesize) {
+						inner_buffer[filesize - (total - recv)] = '\0';
+						fwrite(inner_buffer, sizeof(char), filesize - (total - recv), fp);
 						break;
 					}
-					fwrite(inner_buffer, sizeof(char), recv_len, fp);
-					bzero(inner_buffer, BUFSIZE);
-					if (total > file_size) break;
+					fwrite(inner_buffer, sizeof(char), recv, fp);
+					bzero(inner_buffer, sizeof(inner_buffer));
+					if(total >= recv) break; 
 				}
 				fclose(fp);	
 				 
