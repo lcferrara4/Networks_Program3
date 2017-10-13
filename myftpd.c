@@ -52,7 +52,7 @@ void sendInt(int x, int bits, int socket) {
 		char *data = (char*)&conv;
 		int size_int = sizeof(conv);
 		// Write size of listing as 32-bit int		
-		
+	        printf("%i\n", x);	
 		if (write(socket, data, size_int) < 0) {
 			perror("FTP Server: Error sending size of directory listing\n");
 			exit(1);
@@ -193,33 +193,61 @@ int main (int argc, char *argv[]) {
 				getFileDir(s_new, filename);
 			
 				if (access( filename, F_OK ) != -1) {
-					printf("%i\n", access(filename, F_OK));
+					bzero(inner_buffer, BUFSIZE);
 					int x = getFileSize(filename);
 					sendInt(x, 32, s_new);
-
-					// Write contents of file to client
+					
 					FILE *fp = fopen(filename, "r");
-					int sent = -1;
-					while(sent != 0) { 
-						bzero((char*)&inner_buffer, sizeof(inner_buffer));
-						sent = fread(inner_buffer, sizeof(char), BUFSIZE, fp);
-						if(ferror(fp) != 0) {
-							fputs("error reading file", stderr);
-						}
-						if (write(s_new, inner_buffer, sizeof(inner_buffer)) < 0) {
+					int send = 0;
+					int total = 0;
+					
+					while(send = fread(inner_buffer, sizeof(char), BUFSIZE, fp)) {
+						total += send;
+						if(write(s_new, inner_buffer, send) < 0) {
 							perror("FTP Server: Error sending contents of dwld\n");
+							exit(1);
 						}
-					}	  
+						bzero(inner_buffer, BUFSIZE);
+						if(total >= x) break;
+						
+					}
+					fclose(fp);
+					bzero(inner_buffer, BUFSIZE);
+
 
 				} else if (access( filename, F_OK ) == -1) {
 					//Return 32-bit -1 to signify file not here
 					sendInt(-1, 32, s_new);
 				}		
+			
 			} else if (!strcmp(buffer, "UPLD")) {
 				// Upload file commands
 				// Get filename/directory name length from client
 				bzero((char*)&filename, sizeof(filename));
+				bzero((char*)&inner_buffer, sizeof(inner_buffer));
 				getFileDir(s_new, filename);
+				printf("%s\n", filename);
+				int filesize = receiveInt(32, s_new); 
+				printf("%i\n", filesize);	
+				
+
+				FILE *fp = fopen(filename, "a");
+				int recv = 0;
+				int total = 0;
+				
+				while((recv = read(s_new, inner_buffer, BUFSIZE)) > 0) {
+					total += recv;
+					if (total > filesize) {
+						inner_buffer[filesize - (total - recv)] = '\0';
+						fwrite(inner_buffer, sizeof(char), filesize - (total - recv), fp);
+						break;
+					}
+					fwrite(inner_buffer, sizeof(char), recv, fp);
+					bzero(inner_buffer, sizeof(inner_buffer));
+					if(total >= filesize) break; 
+				}
+				fclose(fp);	
+				 
 			
 			} else if (!strcmp(buffer, "DELF")) {
 				// Delete file commands
