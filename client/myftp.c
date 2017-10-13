@@ -242,19 +242,6 @@ int main (int argc, char *argv[]) {
 				if(total >= x) break;
 			}
 			fclose(fp);
-			
-			// Get throughput
-			printf("before int\n");
-			int my_size = receiveInt(32, s);
-			printf("size: %d\n", x);
-			char confirmation[BUFSIZE];
-			printf("declared\n");
-                        if (read(s, confirmation, my_size) < 0) {
-                                perror("FTP Client: Error reading from socket\n");
-                                exit(1);
-                        }
-			printf("read\n");
-			printf("%s", confirmation);
 		} else if (!strcmp(operation, "DELF")) {
 			// Delete file
 			bzero((char*)&filename, sizeof(filename));
