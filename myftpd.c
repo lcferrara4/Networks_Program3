@@ -113,7 +113,7 @@ void getFileDir(int socket, char *filename) {
 int main (int argc, char *argv[]) {
 
 	//variable declaration
-	int port, s, filelen, len,  s_new;
+	int port, s, len,  s_new;
 	int waiting = 1;
 	struct sockaddr_in sin;	
 	int opt = 1; /* 0 to disable options */
@@ -201,7 +201,7 @@ int main (int argc, char *argv[]) {
 					int send = 0;
 					int total = 0;
 					
-					while(send = fread(inner_buffer, sizeof(char), BUFSIZE, fp)) {
+					while((send = fread(inner_buffer, sizeof(char), BUFSIZE, fp))) {
 						total += send;
 						if(write(s_new, inner_buffer, send) < 0) {
 							perror("FTP Server: Error sending contents of dwld\n");
