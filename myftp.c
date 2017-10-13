@@ -177,8 +177,6 @@ int main (int argc, char *argv[]) {
 			int x;
 			char inner_buffer[BUFSIZE];
 
-			printf("%i\n",file_size);
-
 			if(file_size == -1) {
 				printf("The desired file does not exist\n");
 				continue;
@@ -190,7 +188,6 @@ int main (int argc, char *argv[]) {
 				
 				while((recv_len = recv(s, inner_buffer, BUFSIZE, 0)) > 0) {
 					total += recv_len;
-					printf("%i\n", total);
 					if(total > file_size) {
 						inner_buffer[file_size - (total - recv_len)] = '\0';
 						x = fwrite(inner_buffer, sizeof(char), file_size - (total - recv_len), fp);
