@@ -226,9 +226,7 @@ int main (int argc, char *argv[]) {
 				bzero((char*)&filename, sizeof(filename));
 				bzero((char*)&inner_buffer, sizeof(inner_buffer));
 				getFileDir(s_new, filename);
-				printf("%s\n", filename);
-				int filesize = receiveInt(32, s_new); 
-				printf("%i\n", filesize);	
+				int filesize = receiveInt(32, s_new); 	
 				
 
 				FILE *fp = fopen(filename, "a");
